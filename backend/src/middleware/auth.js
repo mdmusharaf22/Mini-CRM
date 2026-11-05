@@ -1,62 +1,69 @@
-const { verifyToken } = require("../utils/tokenUtils");
+const jwt = require('jsonwebtoken');
+const User = require('../models/User');
 
-/**
- * Authentication middleware - validates JWT access token
- */
-const authenticate = (req, res, next) => {
-  const authHeader = req.headers.authorization;
-
-  if (!authHeader) {
-    return res.status(401).json({ message: "Access token required" });
-  }
-
-  const parts = authHeader.split(" ");
-  if (parts.length !== 2 || parts[0] !== "Bearer" || !parts[1]) {
-    return res.status(401).json({ message: "Invalid token" });
-  }
-
-  const token = parts[1];
-
+const protect = async (req, res, next) => {
   try {
-    const decoded = verifyToken(token);
-    req.user = {
-      id: decoded.id,
-      email: decoded.email,
-      role: decoded.role,
-    };
-    next();
-  } catch (error) {
-    if (error.name === "TokenExpiredError") {
-      return res.status(401).json({ message: "Token expired" });
+    let token;
+
+    // Check for token in Authorization header
+    if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
+      token = req.headers.authorization.split(' ')[1];
     }
-    return res.status(401).json({ message: "Invalid token" });
+
+    if (!token) {
+      return res.status(401).json({
+        success: false,
+        message: 'Not authorized to access this route'
+      });
+    }
+
+    try {
+      // Verify token
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+      // Get user from token
+      req.user = await User.findById(decoded.id).select('-password');
+
+      if (!req.user) {
+        return res.status(401).json({
+          success: false,
+          message: 'User not found'
+        });
+      }
+
+      if (!req.user.isActive) {
+        return res.status(401).json({
+          success: false,
+          message: 'User account is inactive'
+        });
+      }
+
+      next();
+    } catch (error) {
+      return res.status(401).json({
+        success: false,
+        message: 'Token is not valid'
+      });
+    }
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: 'Server error in authentication'
+    });
   }
 };
 
-/**
- * Role-based authorization middleware
- * @param  {...string} allowedRoles - Roles permitted to access the route
- */
-const authorize = (...allowedRoles) => {
+// Middleware to check if user is admin
+const authorize = (...roles) => {
   return (req, res, next) => {
-    if (!req.user || !req.user.role) {
-      return res.status(403).json({ message: "Invalid or missing role" });
+    if (!roles.includes(req.user.role)) {
+      return res.status(403).json({
+        success: false,
+        message: `User role '${req.user.role}' is not authorized to access this route`
+      });
     }
-
-    const validRoles = ["Admin", "Team Lead", "Developer"];
-    if (!validRoles.includes(req.user.role)) {
-      return res.status(403).json({ message: "Invalid or missing role" });
-    }
-
-    if (!allowedRoles.includes(req.user.role)) {
-      return res.status(403).json({ message: "Insufficient permissions" });
-    }
-
     next();
   };
 };
 
-module.exports = {
-  authenticate,
-  authorize,
-};
+module.exports = { protect, authorize };

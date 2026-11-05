@@ -1,53 +1,44 @@
-require("dotenv").config();
-const express = require("express");
-const cors = require("cors");
-const sequelize = require("./src/config/database");
-
-// Validate required environment variables
-if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32) {
-  console.error(
-    "❌ JWT_SECRET is not defined or is shorter than 32 characters."
-  );
-  console.error("   Current value length:", (process.env.JWT_SECRET || "").length);
-  process.exit(1);
-}
+require('dotenv').config();
+const express = require('express');
+const cors = require('cors');
+const connectDB = require('./src/config/database');
 
 const app = express();
 
+// Connect to MongoDB
+connectDB();
+
+// Middleware
 app.use(cors({
-  origin: ["http://localhost:5173", "http://localhost:3000"],
-  credentials: true,
-  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"],
+  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+  credentials: true
 }));
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 // Routes
-const authRoutes = require("./src/routes/authRoutes");
-app.use("/api/auth", authRoutes);
+app.use('/api/auth', require('./src/routes/authRoutes'));
+app.use('/api/leads', require('./src/routes/leadRoutes'));
+app.use('/api/companies', require('./src/routes/companyRoutes'));
+app.use('/api/tasks', require('./src/routes/taskRoutes'));
+app.use('/api/dashboard', require('./src/routes/dashboardRoutes'));
 
-app.get("/", (req, res) => {
-  res.send("working");
+// Health check
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'OK', message: 'Mini CRM API is running' });
+});
+
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(err.status || 500).json({
+    success: false,
+    message: err.message || 'Internal Server Error'
+  });
 });
 
 const PORT = process.env.PORT || 5000;
 
-// Import models to sync associations
-require("./src/models");
-
-sequelize
-  .authenticate()
-  .then(() => {
-    console.log("✅ PostgreSQL Connected");
-    return sequelize.sync({ alter: true });
-  })
-  .then(() => {
-    console.log("✅ Database synced");
-    app.listen(PORT, () => {
-      console.log(`Server running on port ${PORT}`);
-    });
-  })
-  .catch((err) => {
-    console.error("❌ Database Connection Failed");
-    console.error(err.message);
-  });
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
