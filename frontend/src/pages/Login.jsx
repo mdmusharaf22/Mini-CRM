@@ -1,177 +1,133 @@
-import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useState, useEffect } from 'react';
+import { useNavigate, Link as RouterLink } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import {
+  Container,
   Box,
   Paper,
   TextField,
   Button,
   Typography,
-  InputAdornment,
-  IconButton,
-  CircularProgress,
-} from '@mui/material'
-import {
-  Visibility,
-  VisibilityOff,
-  Email,
-  Lock,
-  Layers,
-} from '@mui/icons-material'
-import toast from 'react-hot-toast'
-import { useAuth } from '../context/AuthContext'
+  Link
+} from '@mui/material';
+import { useAuth } from '../context/AuthContext';
 
 export default function Login() {
-  const navigate = useNavigate()
-  const { login } = useAuth()
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
+  const { login, isAuthenticated } = useAuth();
 
-  const [formData, setFormData] = useState({ email: '', password: '' })
-  const [showPassword, setShowPassword] = useState(false)
-  const [loading, setLoading] = useState(false)
-
-  const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value })
-  }
+  // Redirect if already logged in
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate('/dashboard');
+    }
+  }, [isAuthenticated, navigate]);
 
   const handleSubmit = async (e) => {
-    e.preventDefault()
-    setLoading(true)
+    e.preventDefault();
+
+    // Validation
+    if (!email || !password) {
+      toast.error('Please provide email and password');
+      return;
+    }
+
+    setLoading(true);
 
     try {
-      const data = await login(formData.email, formData.password)
-      toast.success(data.message || 'Login successful!')
-      navigate('/dashboard')
+      const result = await login(email, password);
+      
+      if (result.success) {
+        toast.success('Login successful!');
+        navigate('/dashboard');
+      } else {
+        toast.error(result.message || 'Login failed. Please try again.');
+      }
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Login failed. Please try again.')
+      toast.error('An error occurred. Please try again.');
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   return (
-    <Box
-      sx={{
-        minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: 'linear-gradient(135deg, #0f1117 0%, #1a1d2e 50%, #0f1117 100%)',
-        px: 2,
-      }}
-    >
-      <Paper
-        elevation={0}
+    <Container component="main" maxWidth="xs">
+      <Box
         sx={{
-          p: { xs: 3, sm: 5 },
-          width: '100%',
-          maxWidth: 440,
-          border: '1px solid',
-          borderColor: 'rgba(99, 102, 241, 0.15)',
+          minHeight: '100vh',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
+          alignItems: 'center'
         }}
       >
-        {/* Logo */}
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1, mb: 4 }}>
-          <Box
-            sx={{
-              width: 40,
-              height: 40,
-              borderRadius: 2,
-              bgcolor: 'primary.main',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <Layers sx={{ color: 'white', fontSize: 24 }} />
-          </Box>
-          <Typography variant="h5" fontWeight={700} color="text.primary">
-            TeamFlow
+        <Paper
+          elevation={3}
+          sx={{
+            padding: 4,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            width: '100%'
+          }}
+        >
+          <Typography component="h1" variant="h4" sx={{ mb: 3, fontWeight: 'bold' }}>
+            MINI CRM
           </Typography>
-        </Box>
 
-        <Typography variant="h5" fontWeight={700} textAlign="center" gutterBottom>
-          Welcome Back
-        </Typography>
-        <Typography variant="body2" color="text.secondary" textAlign="center" sx={{ mb: 4 }}>
-          Sign in to continue to your dashboard
-        </Typography>
+          <Box component="form" onSubmit={handleSubmit} sx={{ width: '100%' }}>
+            <TextField
+              margin="normal"
+              required
+              fullWidth
+              id="email"
+              label="Email"
+              name="email"
+              autoComplete="email"
+              autoFocus
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              disabled={loading}
+            />
 
-        <Box component="form" onSubmit={handleSubmit}>
-          <TextField
-            fullWidth
-            label="Email Address"
-            name="email"
-            type="email"
-            value={formData.email}
-            onChange={handleChange}
-            required
-            sx={{ mb: 2.5 }}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <Email sx={{ color: 'text.secondary', fontSize: 20 }} />
-                </InputAdornment>
-              ),
-            }}
-          />
+            <TextField
+              margin="normal"
+              required
+              fullWidth
+              name="password"
+              label="Password"
+              type="password"
+              id="password"
+              autoComplete="current-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              disabled={loading}
+            />
 
-          <TextField
-            fullWidth
-            label="Password"
-            name="password"
-            type={showPassword ? 'text' : 'password'}
-            value={formData.password}
-            onChange={handleChange}
-            required
-            sx={{ mb: 1 }}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <Lock sx={{ color: 'text.secondary', fontSize: 20 }} />
-                </InputAdornment>
-              ),
-              endAdornment: (
-                <InputAdornment position="end">
-                  <IconButton
-                    onClick={() => setShowPassword(!showPassword)}
-                    edge="end"
-                    size="small"
-                  >
-                    {showPassword ? <VisibilityOff fontSize="small" /> : <Visibility fontSize="small" />}
-                  </IconButton>
-                </InputAdornment>
-              ),
-            }}
-          />
+            <Button
+              type="submit"
+              fullWidth
+              variant="contained"
+              sx={{ mt: 3, mb: 2, py: 1.5 }}
+              disabled={loading}
+            >
+              {loading ? 'Logging in...' : 'Login'}
+            </Button>
 
-          <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 3 }}>
-            <Link to="/forgot-password" style={{ textDecoration: 'none' }}>
-              <Typography variant="body2" color="primary.light" sx={{ '&:hover': { textDecoration: 'underline' } }}>
-                Forgot Password?
+            <Box sx={{ textAlign: 'center', mt: 2 }}>
+              <Typography variant="body2">
+                Don't have an account?{' '}
+                <Link component={RouterLink} to="/register" underline="hover">
+                  Sign up here
+                </Link>
               </Typography>
-            </Link>
+            </Box>
           </Box>
-
-          <Button
-            type="submit"
-            fullWidth
-            variant="contained"
-            size="large"
-            disabled={loading}
-            sx={{ mb: 3, py: 1.5 }}
-          >
-            {loading ? <CircularProgress size={24} color="inherit" /> : 'Sign In'}
-          </Button>
-
-          <Typography variant="body2" color="text.secondary" textAlign="center">
-            Don't have an account?{' '}
-            <Link to="/register" style={{ textDecoration: 'none' }}>
-              <Typography component="span" variant="body2" color="primary.light" sx={{ '&:hover': { textDecoration: 'underline' } }}>
-                Sign Up
-              </Typography>
-            </Link>
-          </Typography>
-        </Box>
-      </Paper>
-    </Box>
-  )
+        </Paper>
+      </Box>
+    </Container>
+  );
 }

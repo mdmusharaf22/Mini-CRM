@@ -1,268 +1,177 @@
-import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useState, useEffect } from 'react';
+import { useNavigate, Link as RouterLink } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import {
+  Container,
   Box,
   Paper,
   TextField,
   Button,
   Typography,
-  InputAdornment,
-  IconButton,
-  CircularProgress,
-  MenuItem,
-} from '@mui/material'
-import {
-  Visibility,
-  VisibilityOff,
-  Email,
-  Lock,
-  Person,
-  Layers,
-  Badge,
-} from '@mui/icons-material'
-import toast from 'react-hot-toast'
-import { useAuth } from '../context/AuthContext'
-
-const roles = [
-  { id: 1, label: 'Admin' },
-  { id: 2, label: 'Team Lead' },
-  { id: 3, label: 'Developer' },
-]
+  Link
+} from '@mui/material';
+import { useAuth } from '../context/AuthContext';
 
 export default function Register() {
-  const navigate = useNavigate()
-  const { register } = useAuth()
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
+  const { register, isAuthenticated } = useAuth();
 
-  const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    password: '',
-    confirmPassword: '',
-    role_id: 3,
-  })
-  const [showPassword, setShowPassword] = useState(false)
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
-  const [loading, setLoading] = useState(false)
-
-  const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value })
-  }
+  // Redirect if already logged in
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate('/dashboard');
+    }
+  }, [isAuthenticated, navigate]);
 
   const handleSubmit = async (e) => {
-    e.preventDefault()
-    setLoading(true)
+    e.preventDefault();
 
-    if (formData.password.length < 8) {
-      toast.error('Password must be at least 8 characters long')
-      setLoading(false)
-      return
+    // Validation
+    if (!name || !email || !password || !confirmPassword) {
+      toast.error('Please fill in all fields');
+      return;
     }
 
-    if (formData.password !== formData.confirmPassword) {
-      toast.error('Passwords do not match')
-      setLoading(false)
-      return
+    if (password.length < 6) {
+      toast.error('Password must be at least 6 characters');
+      return;
     }
+
+    if (password !== confirmPassword) {
+      toast.error('Passwords do not match');
+      return;
+    }
+
+    setLoading(true);
 
     try {
-      const data = await register(formData.name, formData.email, formData.password, formData.role_id)
-      toast.success(data.message || 'Registration successful!')
-      navigate('/dashboard')
+      const result = await register(name, email, password);
+      
+      if (result.success) {
+        toast.success('Account created successfully!');
+        navigate('/dashboard');
+      } else {
+        toast.error(result.message || 'Registration failed. Please try again.');
+      }
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Registration failed. Please try again.')
+      toast.error('An error occurred. Please try again.');
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   return (
-    <Box
-      sx={{
-        minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: 'linear-gradient(135deg, #0f1117 0%, #1a1d2e 50%, #0f1117 100%)',
-        px: 2,
-        py: 4,
-      }}
-    >
-      <Paper
-        elevation={0}
+    <Container component="main" maxWidth="xs">
+      <Box
         sx={{
-          p: { xs: 3, sm: 5 },
-          width: '100%',
-          maxWidth: 440,
-          border: '1px solid',
-          borderColor: 'rgba(99, 102, 241, 0.15)',
+          minHeight: '100vh',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
+          alignItems: 'center'
         }}
       >
-        {/* Logo */}
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1, mb: 4 }}>
-          <Box
-            sx={{
-              width: 40,
-              height: 40,
-              borderRadius: 2,
-              bgcolor: 'primary.main',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <Layers sx={{ color: 'white', fontSize: 24 }} />
-          </Box>
-          <Typography variant="h5" fontWeight={700} color="text.primary">
-            TeamFlow
+        <Paper
+          elevation={3}
+          sx={{
+            padding: 4,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            width: '100%'
+          }}
+        >
+          <Typography component="h1" variant="h4" sx={{ mb: 3, fontWeight: 'bold' }}>
+            MINI CRM
           </Typography>
-        </Box>
 
-        <Typography variant="h5" fontWeight={700} textAlign="center" gutterBottom>
-          Create Account
-        </Typography>
-        <Typography variant="body2" color="text.secondary" textAlign="center" sx={{ mb: 4 }}>
-          Join TeamFlow to manage your projects
-        </Typography>
+          <Typography component="h2" variant="h6" sx={{ mb: 2 }}>
+            Create Account
+          </Typography>
 
-        <Box component="form" onSubmit={handleSubmit}>
-          <TextField
-            fullWidth
-            label="Full Name"
-            name="name"
-            value={formData.name}
-            onChange={handleChange}
-            required
-            sx={{ mb: 2.5 }}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <Person sx={{ color: 'text.secondary', fontSize: 20 }} />
-                </InputAdornment>
-              ),
-            }}
-          />
+          <Box component="form" onSubmit={handleSubmit} sx={{ width: '100%' }}>
+            <TextField
+              margin="normal"
+              required
+              fullWidth
+              id="name"
+              label="Full Name"
+              name="name"
+              autoComplete="name"
+              autoFocus
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              disabled={loading}
+            />
 
-          <TextField
-            fullWidth
-            label="Email Address"
-            name="email"
-            type="email"
-            value={formData.email}
-            onChange={handleChange}
-            required
-            sx={{ mb: 2.5 }}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <Email sx={{ color: 'text.secondary', fontSize: 20 }} />
-                </InputAdornment>
-              ),
-            }}
-          />
+            <TextField
+              margin="normal"
+              required
+              fullWidth
+              id="email"
+              label="Email Address"
+              name="email"
+              autoComplete="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              disabled={loading}
+            />
 
-          <TextField
-            fullWidth
-            select
-            label="Role"
-            name="role_id"
-            value={formData.role_id}
-            onChange={handleChange}
-            sx={{ mb: 2.5 }}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <Badge sx={{ color: 'text.secondary', fontSize: 20 }} />
-                </InputAdornment>
-              ),
-            }}
-          >
-            {roles.map((role) => (
-              <MenuItem key={role.id} value={role.id}>
-                {role.label}
-              </MenuItem>
-            ))}
-          </TextField>
+            <TextField
+              margin="normal"
+              required
+              fullWidth
+              name="password"
+              label="Password"
+              type="password"
+              id="password"
+              autoComplete="new-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              disabled={loading}
+              helperText="At least 6 characters"
+            />
 
-          <TextField
-            fullWidth
-            label="Password"
-            name="password"
-            type={showPassword ? 'text' : 'password'}
-            value={formData.password}
-            onChange={handleChange}
-            required
-            helperText="Minimum 8 characters"
-            sx={{ mb: 2.5 }}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <Lock sx={{ color: 'text.secondary', fontSize: 20 }} />
-                </InputAdornment>
-              ),
-              endAdornment: (
-                <InputAdornment position="end">
-                  <IconButton
-                    onClick={() => setShowPassword(!showPassword)}
-                    edge="end"
-                    size="small"
-                  >
-                    {showPassword ? <VisibilityOff fontSize="small" /> : <Visibility fontSize="small" />}
-                  </IconButton>
-                </InputAdornment>
-              ),
-            }}
-          />
+            <TextField
+              margin="normal"
+              required
+              fullWidth
+              name="confirmPassword"
+              label="Confirm Password"
+              type="password"
+              id="confirmPassword"
+              autoComplete="new-password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              disabled={loading}
+            />
 
-          <TextField
-            fullWidth
-            label="Confirm Password"
-            name="confirmPassword"
-            type={showConfirmPassword ? 'text' : 'password'}
-            value={formData.confirmPassword}
-            onChange={handleChange}
-            required
-            sx={{ mb: 3 }}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <Lock sx={{ color: 'text.secondary', fontSize: 20 }} />
-                </InputAdornment>
-              ),
-              endAdornment: (
-                <InputAdornment position="end">
-                  <IconButton
-                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    edge="end"
-                    size="small"
-                  >
-                    {showConfirmPassword ? <VisibilityOff fontSize="small" /> : <Visibility fontSize="small" />}
-                  </IconButton>
-                </InputAdornment>
-              ),
-            }}
-          />
+            <Button
+              type="submit"
+              fullWidth
+              variant="contained"
+              sx={{ mt: 3, mb: 2, py: 1.5 }}
+              disabled={loading}
+            >
+              {loading ? 'Creating Account...' : 'Sign Up'}
+            </Button>
 
-          <Button
-            type="submit"
-            fullWidth
-            variant="contained"
-            size="large"
-            disabled={loading}
-            sx={{ mb: 3, py: 1.5 }}
-          >
-            {loading ? <CircularProgress size={24} color="inherit" /> : 'Create Account'}
-          </Button>
-
-          <Typography variant="body2" color="text.secondary" textAlign="center">
-            Already have an account?{' '}
-            <Link to="/login" style={{ textDecoration: 'none' }}>
-              <Typography component="span" variant="body2" color="primary.light" sx={{ '&:hover': { textDecoration: 'underline' } }}>
-                Sign In
+            <Box sx={{ textAlign: 'center', mt: 2 }}>
+              <Typography variant="body2">
+                Already have an account?{' '}
+                <Link component={RouterLink} to="/login" underline="hover">
+                  Login here
+                </Link>
               </Typography>
-            </Link>
-          </Typography>
-        </Box>
-      </Paper>
-    </Box>
-  )
+            </Box>
+          </Box>
+        </Paper>
+      </Box>
+    </Container>
+  );
 }

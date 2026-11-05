@@ -1,129 +1,155 @@
-import { Box, Typography, AppBar, Toolbar, IconButton, Avatar, Chip } from '@mui/material'
-import { Logout, Layers } from '@mui/icons-material'
-import toast from 'react-hot-toast'
-import { useAuth } from '../context/AuthContext'
-import { useNavigate } from 'react-router-dom'
+import { useState, useEffect } from 'react';
+import {
+  Box,
+  Grid,
+  Paper,
+  Typography,
+  Card,
+  CardContent,
+  CircularProgress,
+  Alert
+} from '@mui/material';
+import {
+  People as PeopleIcon,
+  CheckCircle as CheckCircleIcon,
+  Assignment as AssignmentIcon,
+  Done as DoneIcon
+} from '@mui/icons-material';
+import axios from '../api/axios';
+
+const StatCard = ({ title, value, icon, color }) => (
+  <Card sx={{ height: '100%' }}>
+    <CardContent>
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <Box>
+          <Typography color="textSecondary" gutterBottom variant="body2">
+            {title}
+          </Typography>
+          <Typography variant="h3" component="div" sx={{ fontWeight: 'bold', color }}>
+            {value}
+          </Typography>
+        </Box>
+        <Box
+          sx={{
+            backgroundColor: `${color}20`,
+            borderRadius: '50%',
+            width: 60,
+            height: 60,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}
+        >
+          {icon}
+        </Box>
+      </Box>
+    </CardContent>
+  </Card>
+);
 
 export default function Dashboard() {
-  const { user, logout } = useAuth()
-  const navigate = useNavigate()
+  const [stats, setStats] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
-  const handleLogout = async () => {
-    await logout()
-    toast.success('Logged out successfully!')
-    navigate('/login')
+  useEffect(() => {
+    fetchDashboardStats();
+  }, []);
+
+  const fetchDashboardStats = async () => {
+    try {
+      setLoading(true);
+      setError('');
+      const response = await axios.get('/dashboard/stats');
+      
+      if (response.data.success) {
+        setStats(response.data.data.stats);
+      }
+    } catch (err) {
+      console.error('Error fetching dashboard stats:', err);
+      setError('Failed to load dashboard statistics');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '400px' }}>
+        <CircularProgress />
+      </Box>
+    );
   }
 
-  const getInitials = (name) => {
-    if (!name) return 'U'
-    return name.split(' ').map(n => n[0]).join('').toUpperCase()
+  if (error) {
+    return (
+      <Alert severity="error" sx={{ mb: 2 }}>
+        {error}
+      </Alert>
+    );
   }
 
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
-      {/* Top App Bar */}
-      <AppBar
-        position="static"
-        elevation={0}
-        sx={{
-          bgcolor: 'background.paper',
-          borderBottom: '1px solid',
-          borderColor: 'rgba(99, 102, 241, 0.1)',
-        }}
-      >
-        <Toolbar sx={{ justifyContent: 'space-between' }}>
-          {/* Logo */}
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <Box
-              sx={{
-                width: 36,
-                height: 36,
-                borderRadius: 1.5,
-                bgcolor: 'primary.main',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <Layers sx={{ color: 'white', fontSize: 20 }} />
-            </Box>
-            <Typography variant="h6" fontWeight={700} color="text.primary">
-              TeamFlow
+    <Box>
+      <Typography variant="h4" component="h1" gutterBottom sx={{ mb: 3, fontWeight: 'bold' }}>
+        Dashboard
+      </Typography>
+
+      <Grid container spacing={3}>
+        {/* Total Leads */}
+        <Grid item xs={12} sm={6} md={3}>
+          <StatCard
+            title="Total Leads"
+            value={stats?.totalLeads || 0}
+            icon={<PeopleIcon sx={{ fontSize: 30, color: '#1976d2' }} />}
+            color="#1976d2"
+          />
+        </Grid>
+
+        {/* Qualified Leads */}
+        <Grid item xs={12} sm={6} md={3}>
+          <StatCard
+            title="Qualified Leads"
+            value={stats?.qualifiedLeads || 0}
+            icon={<CheckCircleIcon sx={{ fontSize: 30, color: '#2e7d32' }} />}
+            color="#2e7d32"
+          />
+        </Grid>
+
+        {/* Tasks Due Today */}
+        <Grid item xs={12} sm={6} md={3}>
+          <StatCard
+            title="Tasks Due Today"
+            value={stats?.tasksDueToday || 0}
+            icon={<AssignmentIcon sx={{ fontSize: 30, color: '#ed6c02' }} />}
+            color="#ed6c02"
+          />
+        </Grid>
+
+        {/* Completed Tasks */}
+        <Grid item xs={12} sm={6} md={3}>
+          <StatCard
+            title="Completed Tasks"
+            value={stats?.completedTasks || 0}
+            icon={<DoneIcon sx={{ fontSize: 30, color: '#9c27b0' }} />}
+            color="#9c27b0"
+          />
+        </Grid>
+      </Grid>
+
+      {/* Additional Information Section */}
+      <Grid container spacing={3} sx={{ mt: 2 }}>
+        <Grid item xs={12}>
+          <Paper sx={{ p: 3 }}>
+            <Typography variant="h6" gutterBottom sx={{ fontWeight: 'bold' }}>
+              Welcome to Mini CRM
             </Typography>
-          </Box>
-
-          {/* User Info & Logout */}
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <Chip
-              label={user?.role || 'User'}
-              size="small"
-              sx={{
-                bgcolor: 'primary.main',
-                color: 'white',
-                fontWeight: 600,
-                fontSize: '0.7rem',
-                textTransform: 'capitalize',
-              }}
-            />
-            <Box sx={{ display: { xs: 'none', sm: 'block' }, textAlign: 'right' }}>
-              <Typography variant="body2" fontWeight={600} color="text.primary">
-                {user?.name}
-              </Typography>
-              <Typography variant="caption" color="text.secondary">
-                {user?.email}
-              </Typography>
-            </Box>
-            <Avatar
-              sx={{
-                width: 36,
-                height: 36,
-                bgcolor: 'primary.dark',
-                fontSize: '0.875rem',
-                fontWeight: 600,
-              }}
-            >
-              {getInitials(user?.name)}
-            </Avatar>
-            <IconButton onClick={handleLogout} sx={{ color: 'text.secondary' }}>
-              <Logout fontSize="small" />
-            </IconButton>
-          </Box>
-        </Toolbar>
-      </AppBar>
-
-      {/* Empty Dashboard Content */}
-      <Box
-        sx={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          minHeight: 'calc(100vh - 64px)',
-          px: 3,
-          textAlign: 'center',
-        }}
-      >
-        <Box
-          sx={{
-            width: 80,
-            height: 80,
-            borderRadius: 3,
-            bgcolor: 'rgba(99, 102, 241, 0.1)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            mb: 3,
-          }}
-        >
-          <Layers sx={{ fontSize: 40, color: 'primary.light' }} />
-        </Box>
-        <Typography variant="h5" fontWeight={700} color="text.primary" gutterBottom>
-          Welcome to TeamFlow
-        </Typography>
-        <Typography variant="body1" color="text.secondary" sx={{ maxWidth: 400 }}>
-          Your dashboard is ready. Modules will be added here soon.
-        </Typography>
-      </Box>
+            <Typography variant="body1" color="textSecondary">
+              View and manage your leads, companies, and tasks from the sidebar navigation.
+            </Typography>
+          </Paper>
+        </Grid>
+      </Grid>
     </Box>
-  )
+  );
 }
