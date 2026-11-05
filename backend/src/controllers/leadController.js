@@ -13,8 +13,11 @@ exports.getLeads = async (req, res) => {
       assignedTo = ''
     } = req.query;
 
-    // Build query - exclude soft-deleted leads
-    const query = { isDeleted: false };
+    // Build query - exclude soft-deleted leads and filter by current user
+    const query = { 
+      isDeleted: false,
+      createdBy: req.user._id
+    };
 
     // Search by name or email
     if (search) {
@@ -77,7 +80,8 @@ exports.getLead = async (req, res) => {
   try {
     const lead = await Lead.findOne({
       _id: req.params.id,
-      isDeleted: false
+      isDeleted: false,
+      createdBy: req.user._id
     })
       .populate('assignedTo', 'name email')
       .populate('company', 'name industry location')
@@ -167,10 +171,11 @@ exports.updateLead = async (req, res) => {
   try {
     const { name, email, phone, status, source, assignedTo, company, notes } = req.body;
 
-    // Find lead (not deleted)
+    // Find lead (not deleted) and owned by current user
     let lead = await Lead.findOne({
       _id: req.params.id,
-      isDeleted: false
+      isDeleted: false,
+      createdBy: req.user._id
     });
 
     if (!lead) {
@@ -236,7 +241,11 @@ exports.updateLeadStatus = async (req, res) => {
     }
 
     const lead = await Lead.findOneAndUpdate(
-      { _id: req.params.id, isDeleted: false },
+      { 
+        _id: req.params.id, 
+        isDeleted: false,
+        createdBy: req.user._id
+      },
       { status },
       { new: true, runValidators: true }
     )
@@ -272,7 +281,8 @@ exports.deleteLead = async (req, res) => {
   try {
     const lead = await Lead.findOne({
       _id: req.params.id,
-      isDeleted: false
+      isDeleted: false,
+      createdBy: req.user._id
     });
 
     if (!lead) {
@@ -310,8 +320,11 @@ exports.getDeletedLeads = async (req, res) => {
       search = ''
     } = req.query;
 
-    // Build query - only deleted leads
-    const query = { isDeleted: true };
+    // Build query - only deleted leads owned by current user
+    const query = { 
+      isDeleted: true,
+      createdBy: req.user._id
+    };
 
     // Search by name or email
     if (search) {
@@ -364,7 +377,8 @@ exports.restoreLead = async (req, res) => {
   try {
     const lead = await Lead.findOne({
       _id: req.params.id,
-      isDeleted: true
+      isDeleted: true,
+      createdBy: req.user._id
     });
 
     if (!lead) {

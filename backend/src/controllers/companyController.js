@@ -8,8 +8,11 @@ exports.getCompanies = async (req, res) => {
   try {
     const { page = 1, limit = 10, search = '' } = req.query;
 
-    // Build query - exclude soft-deleted companies
-    const query = { isDeleted: false };
+    // Build query - exclude soft-deleted companies and filter by current user
+    const query = { 
+      isDeleted: false,
+      createdBy: req.user._id
+    };
 
     // Search by name, industry, or location
     if (search) {
@@ -61,7 +64,8 @@ exports.getCompany = async (req, res) => {
   try {
     const company = await Company.findOne({
       _id: req.params.id,
-      isDeleted: false
+      isDeleted: false,
+      createdBy: req.user._id
     }).populate('createdBy', 'name email');
 
     if (!company) {
@@ -91,7 +95,8 @@ exports.getCompanyLeads = async (req, res) => {
   try {
     const company = await Company.findOne({
       _id: req.params.id,
-      isDeleted: false
+      isDeleted: false,
+      createdBy: req.user._id
     }).populate('createdBy', 'name email');
 
     if (!company) {
@@ -101,10 +106,11 @@ exports.getCompanyLeads = async (req, res) => {
       });
     }
 
-    // Get all leads associated with this company (not deleted)
+    // Get all leads associated with this company (not deleted) and owned by current user
     const leads = await Lead.find({
       company: req.params.id,
-      isDeleted: false
+      isDeleted: false,
+      createdBy: req.user._id
     })
       .populate('assignedTo', 'name email')
       .populate('createdBy', 'name email')
@@ -187,10 +193,11 @@ exports.updateCompany = async (req, res) => {
   try {
     const { name, industry, location, website, phone, email, notes } = req.body;
 
-    // Find company (not deleted)
+    // Find company (not deleted) and owned by current user
     let company = await Company.findOne({
       _id: req.params.id,
-      isDeleted: false
+      isDeleted: false,
+      createdBy: req.user._id
     });
 
     if (!company) {
@@ -245,7 +252,8 @@ exports.deleteCompany = async (req, res) => {
   try {
     const company = await Company.findOne({
       _id: req.params.id,
-      isDeleted: false
+      isDeleted: false,
+      createdBy: req.user._id
     });
 
     if (!company) {
@@ -255,10 +263,11 @@ exports.deleteCompany = async (req, res) => {
       });
     }
 
-    // Check if company has associated leads
+    // Check if company has associated leads owned by current user
     const associatedLeadsCount = await Lead.countDocuments({
       company: req.params.id,
-      isDeleted: false
+      isDeleted: false,
+      createdBy: req.user._id
     });
 
     if (associatedLeadsCount > 0) {

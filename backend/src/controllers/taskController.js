@@ -13,8 +13,11 @@ exports.getTasks = async (req, res) => {
       lead = ''
     } = req.query;
 
-    // Build query - exclude soft-deleted tasks
-    const query = { isDeleted: false };
+    // Build query - exclude soft-deleted tasks and filter by current user
+    const query = { 
+      isDeleted: false,
+      createdBy: req.user._id
+    };
 
     // Filter by status
     if (status) {
@@ -74,7 +77,8 @@ exports.getTask = async (req, res) => {
   try {
     const task = await Task.findOne({
       _id: req.params.id,
-      isDeleted: false
+      isDeleted: false,
+      createdBy: req.user._id
     })
       .populate('assignedTo', 'name email')
       .populate('lead', 'name email status')
@@ -163,10 +167,11 @@ exports.updateTask = async (req, res) => {
   try {
     const { title, description, lead, assignedTo, status, priority, dueDate } = req.body;
 
-    // Find task (not deleted)
+    // Find task (not deleted) and owned by current user
     let task = await Task.findOne({
       _id: req.params.id,
-      isDeleted: false
+      isDeleted: false,
+      createdBy: req.user._id
     });
 
     if (!task) {
@@ -230,10 +235,11 @@ exports.updateTaskStatus = async (req, res) => {
       });
     }
 
-    // Find task (not deleted)
+    // Find task (not deleted) and owned by current user
     const task = await Task.findOne({
       _id: req.params.id,
-      isDeleted: false
+      isDeleted: false,
+      createdBy: req.user._id
     });
 
     if (!task) {
@@ -243,11 +249,13 @@ exports.updateTaskStatus = async (req, res) => {
       });
     }
 
-    // Check if user is assigned to this task or is admin
-    if (task.assignedTo.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
+    // Check if user is assigned to this task or created it or is admin
+    if (task.assignedTo.toString() !== req.user._id.toString() && 
+        task.createdBy.toString() !== req.user._id.toString() && 
+        req.user.role !== 'admin') {
       return res.status(403).json({
         success: false,
-        message: 'Only assigned users can update task status'
+        message: 'Only assigned users or task creators can update task status'
       });
     }
 
@@ -281,7 +289,8 @@ exports.deleteTask = async (req, res) => {
   try {
     const task = await Task.findOne({
       _id: req.params.id,
-      isDeleted: false
+      isDeleted: false,
+      createdBy: req.user._id
     });
 
     if (!task) {

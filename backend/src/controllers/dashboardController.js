@@ -6,16 +6,22 @@ const Task = require('../models/Task');
 // @access  Private
 exports.getDashboardStats = async (req, res) => {
   try {
-    // Get total leads (not deleted)
-    const totalLeads = await Lead.countDocuments({ isDeleted: false });
+    const userId = req.user._id;
 
-    // Get qualified leads (status: Qualified)
+    // Get total leads (not deleted) created by current user
+    const totalLeads = await Lead.countDocuments({ 
+      isDeleted: false,
+      createdBy: userId
+    });
+
+    // Get qualified leads (status: Qualified) created by current user
     const qualifiedLeads = await Lead.countDocuments({
       isDeleted: false,
+      createdBy: userId,
       status: 'Qualified'
     });
 
-    // Get tasks due today
+    // Get tasks due today created by current user
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const tomorrow = new Date(today);
@@ -23,21 +29,23 @@ exports.getDashboardStats = async (req, res) => {
 
     const tasksDueToday = await Task.countDocuments({
       isDeleted: false,
+      createdBy: userId,
       dueDate: {
         $gte: today,
         $lt: tomorrow
       }
     });
 
-    // Get completed tasks (status: Completed)
+    // Get completed tasks (status: Completed) created by current user
     const completedTasks = await Task.countDocuments({
       isDeleted: false,
+      createdBy: userId,
       status: 'Completed'
     });
 
-    // Get leads by status breakdown
+    // Get leads by status breakdown for current user
     const leadsByStatus = await Lead.aggregate([
-      { $match: { isDeleted: false } },
+      { $match: { isDeleted: false, createdBy: userId } },
       {
         $group: {
           _id: '$status',
@@ -46,9 +54,9 @@ exports.getDashboardStats = async (req, res) => {
       }
     ]);
 
-    // Get tasks by status breakdown
+    // Get tasks by status breakdown for current user
     const tasksByStatus = await Task.aggregate([
-      { $match: { isDeleted: false } },
+      { $match: { isDeleted: false, createdBy: userId } },
       {
         $group: {
           _id: '$status',
@@ -57,15 +65,21 @@ exports.getDashboardStats = async (req, res) => {
       }
     ]);
 
-    // Get recent leads (last 5)
-    const recentLeads = await Lead.find({ isDeleted: false })
+    // Get recent leads (last 5) created by current user
+    const recentLeads = await Lead.find({ 
+      isDeleted: false,
+      createdBy: userId
+    })
       .populate('assignedTo', 'name email')
       .populate('company', 'name')
       .sort({ createdAt: -1 })
       .limit(5);
 
-    // Get upcoming tasks (next 5 by due date)
-    const upcomingTasks = await Task.find({ isDeleted: false })
+    // Get upcoming tasks (next 5 by due date) created by current user
+    const upcomingTasks = await Task.find({ 
+      isDeleted: false,
+      createdBy: userId
+    })
       .populate('assignedTo', 'name email')
       .populate('lead', 'name')
       .sort({ dueDate: 1 })
