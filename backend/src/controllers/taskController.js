@@ -13,10 +13,14 @@ exports.getTasks = async (req, res) => {
       lead = ''
     } = req.query;
 
-    // Build query - exclude soft-deleted tasks and filter by current user
+    // Build query - exclude soft-deleted tasks
+    // Show tasks created by OR assigned to current user
     const query = { 
       isDeleted: false,
-      createdBy: req.user._id
+      $or: [
+        { createdBy: req.user._id },
+        { assignedTo: req.user._id }
+      ]
     };
 
     // Filter by status
@@ -78,7 +82,10 @@ exports.getTask = async (req, res) => {
     const task = await Task.findOne({
       _id: req.params.id,
       isDeleted: false,
-      createdBy: req.user._id
+      $or: [
+        { createdBy: req.user._id },
+        { assignedTo: req.user._id }
+      ]
     })
       .populate('assignedTo', 'name email')
       .populate('lead', 'name email status')
@@ -167,11 +174,14 @@ exports.updateTask = async (req, res) => {
   try {
     const { title, description, lead, assignedTo, status, priority, dueDate } = req.body;
 
-    // Find task (not deleted) and owned by current user
+    // Find task (not deleted) - created by OR assigned to current user
     let task = await Task.findOne({
       _id: req.params.id,
       isDeleted: false,
-      createdBy: req.user._id
+      $or: [
+        { createdBy: req.user._id },
+        { assignedTo: req.user._id }
+      ]
     });
 
     if (!task) {
@@ -235,27 +245,20 @@ exports.updateTaskStatus = async (req, res) => {
       });
     }
 
-    // Find task (not deleted) and owned by current user
+    // Find task (not deleted) - created by OR assigned to current user
     const task = await Task.findOne({
       _id: req.params.id,
       isDeleted: false,
-      createdBy: req.user._id
+      $or: [
+        { createdBy: req.user._id },
+        { assignedTo: req.user._id }
+      ]
     });
 
     if (!task) {
       return res.status(404).json({
         success: false,
         message: 'Task not found'
-      });
-    }
-
-    // Check if user is assigned to this task or created it or is admin
-    if (task.assignedTo.toString() !== req.user._id.toString() && 
-        task.createdBy.toString() !== req.user._id.toString() && 
-        req.user.role !== 'admin') {
-      return res.status(403).json({
-        success: false,
-        message: 'Only assigned users or task creators can update task status'
       });
     }
 

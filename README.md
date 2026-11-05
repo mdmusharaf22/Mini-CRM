@@ -2,6 +2,15 @@
 
 A full-stack Customer Relationship Management (CRM) system built with MongoDB, Express.js, React, and Node.js.
 
+## 📚 Documentation
+
+- **[AUTHORIZATION.md](./AUTHORIZATION.md)** - Comprehensive authorization logic explanation
+- **[AUTHORIZATION_SUMMARY.md](./AUTHORIZATION_SUMMARY.md)** - Simple authorization explanation
+- **[DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md)** - Deployment instructions
+- **[SUBMISSION_NOTES.md](./SUBMISSION_NOTES.md)** - Complete submission summary
+
+---
+
 ## Features
 
 ### Authentication
@@ -239,6 +248,43 @@ curl -X POST http://localhost:5000/api/auth/register \
 
 ## Features Implementation
 
+### Authorization & Security
+The application implements a robust multi-layered authorization system:
+
+#### 1. Authentication Layer
+- JWT-based token authentication
+- Tokens contain user ID and expire after 24 hours
+- All API routes protected by `protect` middleware
+- Middleware verifies token, loads user, and checks if account is active
+
+#### 2. Data Isolation Layer
+- **Leads**: Users only see leads they created (`createdBy` filter)
+- **Companies**: Users only see companies they created
+- **Tasks**: Users see tasks they created OR tasks assigned to them (collaborative)
+- **Dashboard**: Statistics calculated only from user's own data
+
+#### 3. Resource Ownership
+Every query automatically filters by the logged-in user:
+```javascript
+// Example: Getting leads
+const leads = await Lead.find({
+  isDeleted: false,
+  createdBy: req.user._id  // Only user's own leads
+});
+```
+
+#### 4. Task Collaboration
+Tasks support a collaborative model:
+- Task creator can view, update, and delete the task
+- Assigned user can view and update task status
+- Both parties have appropriate access without compromising security
+
+#### Benefits
+- ✅ Complete data privacy between users
+- ✅ No unauthorized access even with valid IDs
+- ✅ Multi-tenant architecture ready
+- ✅ Audit trail with `createdBy` tracking
+
 ### Soft Delete
 All modules (Leads, Companies, Tasks) implement soft delete:
 - Deleted records have `isDeleted: true`
@@ -248,7 +294,10 @@ All modules (Leads, Companies, Tasks) implement soft delete:
 ### Authentication & Authorization
 - JWT tokens expire after 24 hours
 - Protected routes require valid token in Authorization header
-- Task status updates restricted to assigned users or admins
+- **Multi-tenant data isolation**: Each user only sees their own data
+- **Resource ownership**: All leads, companies, and tasks are filtered by `createdBy`
+- **Task collaboration**: Tasks are visible to both creator and assigned user
+- **Secure by design**: Cannot access other users' data even with valid IDs
 
 ### Pagination
 - All list endpoints support pagination
